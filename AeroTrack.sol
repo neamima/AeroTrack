@@ -12,13 +12,20 @@ contract AeroTrack {
         bool exists;
     }
 
+    struct ManufacturerIdentity {
+        string companyName;
+        bool isVerified;
+    }
+
     event PartManufactured(uint256 indexed serialNumber, string partName, address manufacturer);
     event OwnershipTransferred(uint256 indexed serialNumber, address oldOwner, address newOwner);
     event MaintenanceLogged(uint256 indexed serialNumber, address mechanic, string report);
+    event ManufacturerVerified(address indexed manufacturerAddress, string companyName);
 
     address public regulatoryAuthority;
 
     mapping(uint256 => Part) public parts;
+    mapping(address => ManufacturerIdentity) public manufacturers;
 
     constructor() {
         regulatoryAuthority = msg.sender;
@@ -39,7 +46,28 @@ contract AeroTrack {
         _;
     }
 
-    function manufacturePart(uint256 _serialNumber, string memory _partName) public {
+    modifier onlyVerifiedManufacturer() {
+        require(manufacturers[msg.sender].isVerified == true, "Error: Address is not a verified manufacturer.");
+        _;
+    }
+
+
+    function verifyManufacturer(address _manufacturer, string memory _companyName)
+        public 
+        onlyAuthority
+    {
+        manufacturers[_manufacturer] = ManufacturerIdentity({
+            companyName: _companyName,
+            isVerified: true
+        });
+        
+        emit ManufacturerVerified(_manufacturer, _companyName);
+    }
+
+    function manufacturePart(uint256 _serialNumber, string memory _partName)
+        public
+        onlyVerifiedManufacturer
+    {
         require(parts[_serialNumber].exists == false, "Error: Serial Number already registered!");
         
         parts[_serialNumber] = Part({
@@ -53,6 +81,9 @@ contract AeroTrack {
 
         emit PartManufactured(_serialNumber, _partName, msg.sender);
     }
+
+
+
 
     function transferPart(uint256 _serialNumber, address _newOwner)
         public
@@ -77,6 +108,9 @@ contract AeroTrack {
 
         parts[_serialNumber].status = PartStatus.Installed;
     }
+
+
+    
 
 
 }
